@@ -62,7 +62,7 @@ function Combin_Sub {
 
 
 ## 组合Cookie、Token与互助码
-function Combin_All() {
+function Combin_All {
   export JD_COOKIE=$(Combin_Sub Cookie)
   ## 东东农场(jd_fruit.js)
   export FRUITSHARECODES=$(Combin_Sub ForOtherFruit "0e5acaee5f154eeaa43e15b2db729043@f6b0b7cd6a89476d896995520bd38fe0@6a29fffaca384b0bbc310c0413ac74ae" "354d1e4fe24c4a7fb135aeb797b490fe")
