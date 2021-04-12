@@ -77,7 +77,7 @@ function Combin_All {
   export JDSGMH_SHARECODES=$(Combin_Sub ForOtherSgmh)
   export JDCFD_SHARECODES=$(Combin_Sub ForOtherCfd)
   export JDGLOBAL_SHARECODES=$(Combin_Sub ForOtherGlobal)
-  export CARNIVALCITY_SHARECODES=$(Combin_Sub ForOtherCarnivalcity)
+  export JD818_SHARECODES=$(Combin_Sub ForOtherCarnivalcity)
 }
 
 
