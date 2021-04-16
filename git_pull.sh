@@ -19,7 +19,7 @@ ContentVersion=${ShellDir}/version
 ContentNewTask=${ShellDir}/new_task
 ContentDropTask=${ShellDir}/drop_task
 SendCount=${ShellDir}/send_count
-ScriptsURL=https://gitee.com/amcjcy/amr
+ScriptsURL=https://github.com/amcjcy/amr
 ShellURL=https://github.com/amcjcy/amjj
 
 
