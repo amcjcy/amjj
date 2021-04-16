@@ -1,0 +1,27 @@
+name: sync-v3
+
+on:
+  workflow_dispatch:
+#  schedule:
+#    - cron: '1 */5 * * *'
+
+jobs:
+  build:
+    runs-on: Ubuntu-20.04
+    steps:
+    
+    - name: Init Build Dependencies
+      env:
+        DEBIAN_FRONTEND: noninteractive
+      run: |
+        git config --global user.name 'GitHub Actions' 
+        git config --global user.email 'noreply@github.com'
+    - name: Clone Master
+      run: |
+        git clone -b v3 https://github.com/wadoro/jj.git v3
+    - name: Push Dust
+      uses: ad-m/github-push-action@master
+      with:
+        directory: v3
+        github_token: ${{ secrets.PAT }}
+        branch: v3
