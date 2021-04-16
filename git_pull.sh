@@ -19,8 +19,8 @@ ContentVersion=${ShellDir}/version
 ContentNewTask=${ShellDir}/new_task
 ContentDropTask=${ShellDir}/drop_task
 SendCount=${ShellDir}/send_count
-ScriptsURL=https://gitee.com/highdimen/clone_scripts
-ShellURL=https://github.com/wadoro/jj
+ScriptsURL=https://gitee.com/amcjcy/amr
+ShellURL=https://github.com/amcjcy/amjj
 
 
 ## 导入配置文件
