@@ -380,7 +380,6 @@ echo -e "\n--------------------------------------------------------------\n"
 if [[ ${ExitStatusScripts} -eq 0 ]]
 then
   echo -e "更新 jd_scripts 脚本成功\n"
-  sed -i '/本脚本开源免费使用 By/d' ${ScriptsDir}/sendNotify.js
   Diff_Cron
   [[ "${ScriptsDependOld}" != "${ScriptsDependNew}" ]] && cd ${ScriptsDir} && Npm_Install scripts
   Output_ListJsAdd
