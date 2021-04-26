@@ -19,7 +19,7 @@ ContentVersion=${ShellDir}/version
 ContentNewTask=${ShellDir}/new_task
 ContentDropTask=${ShellDir}/drop_task
 SendCount=${ShellDir}/send_count
-ScriptsURL=https://github.com/RikudouPatrickstar/jd_scripts
+ScriptsURL=https://github.com/gossh520/jd_scripts
 ShellURL=https://github.com/amcjcy/amjj
 
 
