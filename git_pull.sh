@@ -11,6 +11,7 @@ FileConf=${ConfigDir}/config.sh
 FileConfSample=${ShellDir}/sample/config.sh.sample
 ListCron=${ConfigDir}/crontab.list
 ListCronLxk=${ScriptsDir}/docker/crontab_list.sh
+ListCronShylocks=${Scripts2Dir}/docker/crontab_list.sh
 ListTask=${LogDir}/task.list
 ListJs=${LogDir}/js.list
 ListJsAdd=${LogDir}/js-add.list
@@ -76,7 +77,7 @@ function Git_PullScripts {
 ## 克隆scripts2
 function Git_CloneScripts2 {
   echo -e "克隆shylocks脚本，原地址：${Scripts2URL}\n"
-  git clone -b main ${Scripts2URL} ${ScriptsDir}
+  git clone -b main ${Scripts2URL} ${Scripts2Dir}
   ExitStatusScripts2=$?
   echo
 }
@@ -84,7 +85,7 @@ function Git_CloneScripts2 {
 ## 更新scripts2
 function Git_PullScripts2 {
   echo -e "更新shylocks脚本，原地址：${Scripts2URL}\n"
-  cd ${ScriptsDir}
+  cd ${Scripts2Dir}
   git fetch --all
   ExitStatusScripts2=$?
   git reset --hard origin/main
