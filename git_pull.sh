@@ -74,19 +74,19 @@ function Git_PullScripts {
 }
 
 ## 克隆scripts2
-function Git_CloneScripts {
+function Git_CloneScripts2 {
   echo -e "克隆shylocks脚本，原地址：${Scripts2URL}\n"
   git clone -b main ${Scripts2URL} ${ScriptsDir}
-  ExitStatusScripts=$?
+  ExitStatusScripts2=$?
   echo
 }
 
 ## 更新scripts2
-function Git_PullScripts {
+function Git_PullScripts2 {
   echo -e "更新shylocks脚本，原地址：${Scripts2URL}\n"
   cd ${ScriptsDir}
   git fetch --all
-  ExitStatusScripts=$?
+  ExitStatusScripts2=$?
   git reset --hard origin/main
   echo
 }
