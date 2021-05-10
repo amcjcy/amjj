@@ -6,13 +6,11 @@ ShellJd=${ShellDir}/jd.sh
 LogDir=${ShellDir}/log
 [ ! -d ${LogDir} ] && mkdir -p ${LogDir}
 ScriptsDir=${ShellDir}/scripts
-Scripts2Dir=${ShellDir}/scripts
 ConfigDir=${ShellDir}/config
 FileConf=${ConfigDir}/config.sh
 FileConfSample=${ShellDir}/sample/config.sh.sample
 ListCron=${ConfigDir}/crontab.list
 ListCronLxk=${ScriptsDir}/docker/crontab_list.sh
-ListCronShylocks=${Scripts2Dir}/docker/crontab_list.sh
 ListTask=${LogDir}/task.list
 ListJs=${LogDir}/js.list
 ListJsAdd=${LogDir}/js-add.list
@@ -23,7 +21,7 @@ ContentDropTask=${ShellDir}/drop_task
 SendCount=${ShellDir}/send_count
 ScriptsURL=https://github.com/gossh520/jd_scripts
 ShellURL=https://github.com/amcjcy/amjj
-Scripts2URL=https://github.com/amcjcy/amo
+
 
 ## 导入配置文件
 function Import_Conf {
@@ -75,23 +73,6 @@ function Git_PullScripts {
   echo
 }
 
-## 克隆scripts2
-function Git_CloneScripts2 {
-  echo -e "克隆shylocks脚本，原地址：${Scripts2URL}\n"
-  git clone -b main ${Scripts2URL} ${Scripts2Dir}
-  ExitStatusScripts2=$?
-  echo
-}
-
-## 更新scripts2
-function Git_PullScripts2 {
-  echo -e "更新shylocks脚本，原地址：${Scripts2URL}\n"
-  cd ${Scripts2Dir}
-  git fetch --all
-  ExitStatusScripts2=$?
-  git reset --hard origin/main
-  echo
-}
 
 ## 给所有 shell 脚本赋予 755 权限
 function Chmod_ShellScripts {
