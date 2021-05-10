@@ -21,7 +21,7 @@ ContentDropTask=${ShellDir}/drop_task
 SendCount=${ShellDir}/send_count
 ScriptsURL=https://github.com/gossh520/jd_scripts
 ShellURL=https://github.com/amcjcy/amjj
-
+Scripts2URL=https://github.com/amcjcy/amo
 
 ## 导入配置文件
 function Import_Conf {
@@ -73,6 +73,23 @@ function Git_PullScripts {
   echo
 }
 
+## 克隆scripts2
+function Git_CloneScripts {
+  echo -e "克隆shylocks脚本，原地址：${Scripts2URL}\n"
+  git clone -b main ${Scripts2URL} ${ScriptsDir}
+  ExitStatusScripts=$?
+  echo
+}
+
+## 更新scripts2
+function Git_PullScripts {
+  echo -e "更新shylocks脚本，原地址：${Scripts2URL}\n"
+  cd ${ScriptsDir}
+  git fetch --all
+  ExitStatusScripts=$?
+  git reset --hard origin/main
+  echo
+}
 
 ## 给所有 shell 脚本赋予 755 权限
 function Chmod_ShellScripts {
