@@ -1,16 +1,20 @@
 #!/usr/bin/env bash
 
 ## 文件路径、脚本网址、文件版本以及各种环境的判断
-ShellDir=$(cd "$(dirname "$0")";pwd)
-ShellJd=${ShellDir}/jd.sh
+ShellDir=${JD_DIR:-$(cd $(dirname $0); pwd)}
+[[ ${JD_DIR} ]] && ShellJd=${ShellDir}/jd.sh || ShellJd=${ShellDir}/jd.sh
 LogDir=${ShellDir}/log
 [ ! -d ${LogDir} ] && mkdir -p ${LogDir}
 ScriptsDir=${ShellDir}/scripts
+Scripts2Dir=${ShellDir}/scripts2
 ConfigDir=${ShellDir}/config
 FileConf=${ConfigDir}/config.sh
+FileConftemp=${ConfigDir}/config.sh.temp
+FileDiy=${ConfigDir}/diy.sh
 FileConfSample=${ShellDir}/sample/config.sh.sample
 ListCron=${ConfigDir}/crontab.list
 ListCronLxk=${ScriptsDir}/docker/crontab_list.sh
+ListCronShylocks=${Scripts2Dir}/docker/crontab_list.sh
 ListTask=${LogDir}/task.list
 ListJs=${LogDir}/js.list
 ListJsAdd=${LogDir}/js-add.list
@@ -19,53 +23,37 @@ ContentVersion=${ShellDir}/version
 ContentNewTask=${ShellDir}/new_task
 ContentDropTask=${ShellDir}/drop_task
 SendCount=${ShellDir}/send_count
+isTermux=${ANDROID_RUNTIME_ROOT}${ANDROID_ROOT}
+WhichDep=$(grep "/jd_shell" "${ShellDir}/.git/config")
+Scripts2URL=https://github.com/amcjcy/amo
+PanelDir=${ShellDir}/panel
+panelpwd=${ConfigDir}/auth.json
+panelpwdSample=${ShellDir}/sample/auth.json
 ScriptsURL=https://github.com/gossh520/jd_scripts
 ShellURL=https://github.com/amcjcy/amjj
 
 
-## 导入配置文件
-function Import_Conf {
-  if [ -f ${FileConf} ]; then
-    . ${FileConf}
-  fi
-}
-
-
-## 更新 jd-base 脚本
+## 更新shell脚本
 function Git_PullShell {
-  echo -e "更新 jd-base 脚本\n"
+  echo -e "更新shell脚本，原地址：${ShellURL}\n"
   cd ${ShellDir}
   git fetch --all
   ExitStatusShell=$?
-  git reset --hard origin/master
-  echo
+  git reset --hard origin/v3
 }
 
 
-## 更新 jd-base 脚本成功后的操作
-function Git_PullShellNext {
-  if [[ ${ExitStatusShell} -eq 0 ]]; then
-    echo -e "更新 jd-base 脚本成功\n"
-    [[ "${PanelDependOld}" != "${PanelDependNew}" ]] && cd ${ShellDir}/panel && Npm_Install panel
-    Notify_Version
-  else
-    echo -e "更新 jd-base 脚本失败，请检查原因\n"
-  fi
-}
-
-
-## 克隆 jd_scripts 脚本
+## 克隆scripts
 function Git_CloneScripts {
-  echo -e "克隆 jd_scripts 脚本\n"
+  echo -e "克隆LXK9301脚本，原地址：${ScriptsURL}\n"
   git clone -b master ${ScriptsURL} ${ScriptsDir}
   ExitStatusScripts=$?
   echo
 }
 
-
-## 更新 jd_scripts 脚本
+## 更新scripts
 function Git_PullScripts {
-  echo -e "更新 jd_scripts 脚本\n"
+  echo -e "更新LXK9301脚本，原地址：${ScriptsURL}\n"
   cd ${ScriptsDir}
   git fetch --all
   ExitStatusScripts=$?
@@ -73,50 +61,57 @@ function Git_PullScripts {
   echo
 }
 
-
-## 给所有 shell 脚本赋予 755 权限
-function Chmod_ShellScripts {
-  shfiles=$(find ${ShellDir} 2> /dev/null)
-  for shf in ${shfiles}; do
-    if [ ${shf##*.} == 'sh' ]; then
-      chmod 755 ${shf}
-    fi
-   done
+## 克隆scripts2
+function Git_CloneScripts2 {
+  echo -e "克隆shylocks脚本，原地址：${Scripts2URL}\n"
+  git clone -b master ${Scripts2URL} ${Scripts2Dir}
+  ExitStatusScripts2=$?
+  echo
 }
 
+## 更新scripts2
+function Git_PullScripts2 {
+  echo -e "更新shylocks脚本，原地址：${Scripts2URL}\n"
+  cd ${Scripts2Dir}
+  git fetch --all
+  ExitStatusScripts2=$?
+  git reset --hard origin/master
+  echo
+}
 
-## 获取用户数量 UserSum
+## 用户数量UserSum
 function Count_UserSum {
-  for ((i=1; i<=35; i++)); do
+  i=1
+  while [ $i -le 1000 ]; do
     Tmp=Cookie$i
     CookieTmp=${!Tmp}
     [[ ${CookieTmp} ]] && UserSum=$i || break
-  done
-
-  for ((d=36; d<=1000; d++)); do
-    Del=Cookie$d
-    sed -i "/${!Del}/d" ${FileConf} || break
+    let i++
   done
 }
 
 
-## 检测文件：远程仓库 jd_scripts 中的 docker/crontab_list.sh
-## 检测定时任务是否有变化，此函数会在 log 文件夹下生成四个文件，分别为：
-## task.list    crontab.list 中的所有任务清单，仅保留脚本名
-## js.list      上述检测文件中用来运行 jd_scripts 脚本的清单（去掉后缀.js，非运行脚本的不会包括在内）
+## 检测文件：LXK9301/jd_scripts 仓库中的 docker/crontab_list.sh，和 shylocks/Loon 仓库中的 docker/crontab_list.sh
+## 检测定时任务是否有变化，此函数会在Log文件夹下生成四个文件，分别为：
+## task.list    crontab.list中的所有任务清单，仅保留脚本名
+## js.list      上述检测文件中用来运行js脚本的清单（去掉后缀.js，非运行脚本的不会包括在内）
 ## js-add.list  如果上述检测文件增加了定时任务，这个文件内容将不为空
 ## js-drop.list 如果上述检测文件删除了定时任务，这个文件内容将不为空
 function Diff_Cron {
   if [ -f ${ListCron} ]; then
-    grep "${ShellDir}/" ${ListCron} | grep -E " j[drx]_\w+" | perl -pe "s|.+ (j[drx]_\w+).*|\1|" | sort -u > ${ListTask}
-    cat ${ListCronLxk} | grep -E "j[drx]_\w+\.js" | perl -pe "s|.+(j[drx]_\w+)\.js.+|\1|" | sort -u > ${ListJs}
+    if [ -n "${JD_DIR}" ]
+    then
+      grep -E " j[drx]_\w+" ${ListCron} | perl -pe "s|.+ (j[drx]_\w+).*|\1|" | uniq | sort > ${ListTask}
+    else
+      grep "${ShellDir}/" ${ListCron} | grep -E " j[drx]_\w+" | perl -pe "s|.+ (j[drx]_\w+).*|\1|" | uniq | sort > ${ListTask}
+    fi
+    cat ${ListCronLxk} ${ListCronShylocks} | grep -E "j[drx]_\w+\.js" | perl -pe "s|.+(j[drx]_\w+)\.js.+|\1|" | sort > ${ListJs}
     grep -vwf ${ListTask} ${ListJs} > ${ListJsAdd}
     grep -vwf ${ListJs} ${ListTask} > ${ListJsDrop}
   else
-    echo -e "${ListCron} 文件不存在，请先定义你自己的 crontab.list\n"
+    echo -e "${ListCron} 文件不存在，请先定义你自己的crontab.list...\n"
   fi
 }
-
 
 ## 发送删除失效定时任务的消息
 function Notify_DropTask {
@@ -125,7 +120,6 @@ function Notify_DropTask {
   [ -f ${ContentDropTask} ] && rm -f ${ContentDropTask}
 }
 
-
 ## 发送新的定时任务消息
 function Notify_NewTask {
   cd ${ShellDir}
@@ -133,13 +127,12 @@ function Notify_NewTask {
   [ -f ${ContentNewTask} ] && rm -f ${ContentNewTask}
 }
 
-
 ## 检测配置文件版本
 function Notify_Version {
   ## 识别出两个文件的版本号
   VerConfSample=$(grep " Version: " ${FileConfSample} | perl -pe "s|.+v((\d+\.?){3})|\1|")
   [ -f ${FileConf} ] && VerConf=$(grep " Version: " ${FileConf} | perl -pe "s|.+v((\d+\.?){3})|\1|")
-  
+
   ## 删除旧的发送记录文件
   [ -f "${SendCount}" ] && [[ $(cat ${SendCount}) != ${VerConfSample} ]] && rm -f ${SendCount}
 
@@ -148,15 +141,14 @@ function Notify_Version {
   UpdateContent=$(grep " Update Content: " ${FileConfSample} | awk -F ": " '{print $2}')
 
   ## 如果是今天，并且版本号不一致，则发送通知
-  if [ -f ${FileConf} ] && [[ "${VerConf}" != "${VerConfSample}" ]] && [[ ${UpdateDate} == $(date "+%Y-%m-%d") ]]
-  then
+  if [ -f ${FileConf} ] && [[ "${VerConf}" != "${VerConfSample}" ]] && [[ ${UpdateDate} == $(date "+%Y-%m-%d") ]]; then
     if [ ! -f ${SendCount} ]; then
       echo -e "日期: ${UpdateDate}\n版本: ${VerConf} -> ${VerConfSample}\n内容: ${UpdateContent}\n\n" | tee ${ContentVersion}
-      echo -e "如需更新请手动操作，仅更新当天通知一次!" >> ${ContentVersion}
+      echo -e "如需更新请手动操作，仅更新当天通知一次!" >>${ContentVersion}
       cd ${ShellDir}
       node update.js
       if [ $? -eq 0 ]; then
-        echo "${VerConfSample}" > ${SendCount}
+        echo "${VerConfSample}" >${SendCount}
         [ -f ${ContentVersion} ] && rm -f ${ContentVersion}
       fi
     fi
@@ -166,46 +158,50 @@ function Notify_Version {
   fi
 }
 
-
-## npm install 子程序，判断是否安装有 yarn
+## npm install 子程序，判断是否为安卓，判断是否安装有yarn
 function Npm_InstallSub {
-  if ! type yarn >/dev/null 2>&1
+  if [ -n "${isTermux}" ]
   then
-    npm install --registry=https://mirrors.huaweicloud.com/repository/npm/ || npm install
+    npm install --no-bin-links || npm install --no-bin-links --registry=https://registry.npm.taobao.org
+  elif ! type yarn >/dev/null 2>&1
+  then
+    npm install || npm install --registry=https://registry.npm.taobao.org
   else
-    echo -e "检测到本机安装了 yarn，使用 yarn 替代 npm\n"
-    yarn install --registry=https://mirrors.huaweicloud.com/repository/npm/ || yarn install
+    echo -e "检测到本机安装了 yarn，使用 yarn 替代 npm...\n"
+    yarn install || yarn install --registry=https://registry.npm.taobao.org
   fi
 }
-
 
 ## npm install
 function Npm_Install {
-  echo -e "检测到 $1 的依赖包有变化，运行 npm install\n"
-  Npm_InstallSub
-  if [ $? -ne 0 ]; then
-    echo -e "\nnpm install 运行不成功，自动删除 $1/node_modules 后再次尝试一遍"
-    rm -rf node_modules
-  fi
-  echo
-
-  if [ ! -d node_modules ]; then
-    echo -e "运行 npm install\n"
+  cd ${ScriptsDir}
+  if [[ "${PackageListOld}" != "$(cat package.json)" ]]; then
+    echo -e "检测到package.json有变化，运行 npm install...\n"
     Npm_InstallSub
     if [ $? -ne 0 ]; then
-      echo -e "\nnpm install 运行不成功，自动删除 $1/node_modules\n"
-      echo -e "请进入 $1 目录后手动运行 npm install\n"
-      echo -e "3s\n"
+      echo -e "\nnpm install 运行不成功，自动删除 ${ScriptsDir}/node_modules 后再次尝试一遍..."
+      rm -rf ${ScriptsDir}/node_modules
+    fi
+    echo
+  fi
+
+  if [ ! -d ${ScriptsDir}/node_modules ]; then
+    echo -e "运行 npm install...\n"
+    Npm_InstallSub
+    if [ $? -ne 0 ]; then
+      echo -e "\nnpm install 运行不成功，自动删除 ${ScriptsDir}/node_modules...\n"
+      echo -e "请进入 ${ScriptsDir} 目录后按照wiki教程手动运行 npm install...\n"
+      echo -e "当 npm install 失败时，如果检测到有新任务或失效任务，只会输出日志，不会自动增加或删除定时任务...\n"
+      echo -e "3...\n"
       sleep 1
-      echo -e "2s\n"
+      echo -e "2...\n"
       sleep 1
-      echo -e "1s\n"
+      echo -e "1...\n"
       sleep 1
-      rm -rf node_modules
+      rm -rf ${ScriptsDir}/node_modules
     fi
   fi
 }
-
 
 ## 输出是否有新的定时任务
 function Output_ListJsAdd {
@@ -216,7 +212,6 @@ function Output_ListJsAdd {
   fi
 }
 
-
 ## 输出是否有失效的定时任务
 function Output_ListJsDrop {
   if [ ${ExitStatusScripts} -eq 0 ] && [ -s ${ListJsDrop} ]; then
@@ -226,14 +221,8 @@ function Output_ListJsDrop {
   fi
 }
 
-
-## 自动删除失效的定时任务，需要5个条件：
-##   1. AutoAddCron 设置为 true
-##   2. 正常更新 jd_scripts 脚本，没有报错
-##   3. js-drop.list 不为空
-##   4. crontab.list 存在并且不为空
-##   5. 已经正常运行过 npm install
-## 检测文件：远程仓库 jd_scripts 中的 docker/crontab_list.sh
+## 自动删除失效的脚本与定时任务，需要5个条件：1.AutoDelCron 设置为 true；2.正常更新js脚本，没有报错；3.js-drop.list不为空；4.crontab.list存在并且不为空；5.已经正常运行过npm install
+## 检测文件：LXK9301/jd_scripts 仓库中的 docker/crontab_list.sh，和 shylocks/Loon 仓库中的 docker/crontab_list.sh
 ## 如果检测到某个定时任务在上述检测文件中已删除，那么在本地也删除对应定时任务
 function Del_Cron {
   if [ "${AutoDelCron}" = "true" ] && [ -s ${ListJsDrop} ] && [ -s ${ListCron} ] && [ -d ${ScriptsDir}/node_modules ]; then
@@ -246,22 +235,18 @@ function Del_Cron {
       perl -i -ne "{print unless / ${Cron}( |$)/}" ${ListCron}
     done
     crontab ${ListCron}
-    echo -e "成功删除失效的脚本与定时任务\n\n"
+    echo -e "成功删除失效的脚本与定时任务，当前的定时任务清单如下：\n\n--------------------------------------------------------------\n"
+    crontab -l
+    echo -e "\n--------------------------------------------------------------\n"
     if [ -d ${ScriptsDir}/node_modules ]; then
-      echo -e "删除失效的定时任务：\n\n${JsDrop}" > ${ContentDropTask}
+      echo -e "jd-base脚本成功删除失效的定时任务：\n\n${JsDrop}\n\n脚本地址：${ShellURL}" > ${ContentDropTask}
       Notify_DropTask
     fi
   fi
 }
 
-
-## 自动增加新的定时任务，需要5个条件：
-##   1. AutoAddCron 设置为 true
-##   2. 正常更新 jd_scripts 脚本，没有报错
-##   3. js-add.list 不为空
-##   4. crontab.list 存在并且不为空
-##   5. 已经正常运行过 npm install
-## 检测文件：远程仓库 jd_scripts 中的 docker/crontab_list.sh
+## 自动增加新的定时任务，需要5个条件：1.AutoAddCron 设置为 true；2.正常更新js脚本，没有报错；3.js-add.list不为空；4.crontab.list存在并且不为空；5.已经正常运行过npm install
+## 检测文件：LXK9301/jd_scripts 仓库中的 docker/crontab_list.sh，和 shylocks/Loon 仓库中的 docker/crontab_list.sh
 ## 如果检测到检测文件中增加新的定时任务，那么在本地也增加
 ## 本功能生效时，会自动从检测文件新增加的任务中读取时间，该时间为北京时间
 function Add_Cron {
@@ -277,120 +262,189 @@ function Add_Cron {
       then
         echo "4 0,9 * * * bash ${ShellJd} ${Cron}" >> ${ListCron}
       else
-        cat ${ListCronLxk} | grep -E "\/${Cron}\." | perl -pe "s|(^.+)node */scripts/(j[drx]_\w+)\.js.+|\1bash ${ShellJd} \2|" >> ${ListCron}
+        cat ${ListCronLxk} ${ListCronShylocks} | grep -E "\/${Cron}\." | perl -pe "s|(^.+)node */scripts/(j[drx]_\w+)\.js.+|\1bash ${ShellJd} \2|" >> ${ListCron}
       fi
     done
 
     if [ $? -eq 0 ]
     then
       crontab ${ListCron}
-      echo -e "成功添加新的定时任务\n\n"
+      echo -e "成功添加新的定时任务，当前的定时任务清单如下：\n\n--------------------------------------------------------------\n"
+      crontab -l
+      echo -e "\n--------------------------------------------------------------\n"
       if [ -d ${ScriptsDir}/node_modules ]; then
-        echo -e "成功添加新的定时任务：\n\n${JsAdd}" > ${ContentNewTask}
+        echo -e "jd-base脚本成功添加新的定时任务：\n\n${JsAdd}\n\n脚本地址：${ShellURL}" > ${ContentNewTask}
         Notify_NewTask
       fi
     else
-      echo -e "添加新的定时任务出错，请手动添加\n"
+      echo -e "添加新的定时任务出错，请手动添加...\n"
       if [ -d ${ScriptsDir}/node_modules ]; then
-        echo -e "尝试自动添加以下新的定时任务出错，请手动添加：\n\n${JsAdd}" > ${ContentNewTask}
+        echo -e "jd-base脚本尝试自动添加以下新的定时任务出错，请手动添加：\n\n${JsAdd}" > ${ContentNewTask}
         Notify_NewTask
       fi
     fi
   fi
 }
 
-## 为额外的 js 脚本存放目录配置 lxk0301/jd_scripts 环境
-function Set_DiyEnv {
-  echo -e "\n--------------------------------------------------------------\n"
-  echo -e "设置额外的 js 脚本环境\n"
-  EnvFiles=(
-    Env.min.js
-    JS_USER_AGENTS.js
-    USER_AGENTS.js
-    index.js
-    jdCookie.js
-    sendNotify.js
-  )
-  if [[ ${DiyDirs} ]]; then
-    for ((i=0; i<${#DiyDirs[*]}; i++)); do
-      [ ! -d ${DiyDirs[i]} ] && mkdir -p ${DiyDirs[i]}
-      for env_file in ${EnvFiles[*]}; do
-        cp -f ${ScriptsDir}/${env_file} ${ShellDir}/${DiyDirs[i]}/
-      done
-      [ -f ${ShellDir}/${DiyDirs[i]}/package.json ] && DiyDependOld=$(cat ${ShellDir}/${DiyDirs[i]}/package.json)
-      if [ ${DiyPackgeJson} == "false" ]; then
-        cp -f ${ScriptsDir}/package.json ${ShellDir}/${DiyDirs[i]}/
-      fi
-      [ -f ${ShellDir}/${DiyDirs[i]}/package.json ] && DiyDependNew=$(cat ${ShellDir}/${DiyDirs[i]}/package.json)
-      if [ "${DiyDependOld}" != "${DiyDependNew}" ] || [ ! -d ${ShellDir}/${DiyDirs[i]}/node_modules ];then
-        cd ${ShellDir}/${DiyDirs[i]} && Npm_Install ${DiyDirs[i]}
-      fi
-    done
-  else
-    echo -e "未设置额外脚本目录，跳过\n"
+
+## 自定义脚本功能
+function ExtraShell() {
+  ## 自动同步用户自定义的diy.sh
+  if [[ ${EnableExtraShellUpdate} == true ]]; then
+    wget -q $EnableExtraShellURL -O ${FileDiy}
+    if [ $? -eq 0 ]; then
+      echo -e "自定义 DIY 脚本同步完成......"
+      echo -e ''
+      sleep 2s
+    else
+      echo -e "\033[31m自定义 DIY 脚本同步失败！\033[0m"
+      echo -e ''
+      sleep 2s
+    fi
+  fi
+
+  ## 调用用户自定义的diy.sh
+  if [[ ${EnableExtraShell} == true ]]; then
+    if [ -f ${FileDiy} ]; then
+      . ${FileDiy}
+    else
+      echo -e "${FileDiy} 文件不存在，跳过执行自定义 DIY 脚本...\n"
+      echo -e ''
+    fi
   fi
 }
 
+## 一键执行所有活动脚本
+function Run_All() {
+  ## 临时删除以旧版脚本
+  rm -rf ${ShellDir}/run-all.sh
+  ## 默认将 "jd、jx、jr" 开头的活动脚本加入其中
+  rm -rf ${ShellDir}/run_all.sh
+  bash ${ShellDir}/jd.sh | grep -io 'j[drx]_[a-z].*' | grep -v 'bean_change' >${ShellDir}/run_all.sh
+  sed -i "1i\jd_bean_change.js" ${ShellDir}/run_all.sh ## 置顶京豆变动通知
+  sed -i "s#^#bash ${ShellDir}/jd.sh &#g" ${ShellDir}/run_all.sh
+  sed -i 's#.js# now#g' ${ShellDir}/run_all.sh
+  sed -i '1i\#!/bin/env bash' ${ShellDir}/run_all.sh
+  ## 自定义添加脚本
+  ## 例：echo "bash ${ShellDir}/jd.sh xxx now" >>${ShellDir}/run_all.sh
 
-## 替换 jd_scripts 中的 js 脚本
-function ReplaceJs {
-  echo -e "\n--------------------------------------------------------------\n"
-  echo -e "替换 js 脚本\n"
-  if [[ ${ReplaceJsName} ]] && [[ ${ReplaceJsUrl} ]]; then
-    for ((i=0; i<${#ReplaceJsName[*]}; i++)); do
-      cd ${ScriptsDir}
-      rm -f ${ReplaceJsName[i]}.js
-      wget -q ${ReplaceJsUrl[i]} -O ${ReplaceJsName[i]}.js
-      if [ $? == '0' ]; then
-        echo -e "${ReplaceJsName[i]}.js 替换成功\n"
-      else
-        echo -e "${ReplaceJsName[i]}.js 替换失败，请检查原因\n"
-      fi
-    done
-  else
-    echo -e "未设置替换，跳过\n"
+  ## 将挂机活动移至末尾从而最后执行
+  ## 目前仅有 "疯狂的JOY" 这一个活动
+  ## 模板如下 ：
+  ## cat run_all.sh | grep xxx -wq
+  ## if [ $? -eq 0 ];then
+  ##   sed -i '/xxx/d' ${ShellDir}/run_all.sh
+  ##   echo "bash jd.sh xxx now" >>${ShellDir}/run_all.sh
+  ## fi
+  cat ${ShellDir}/run_all.sh | grep jd_crazy_joy_coin -wq
+  if [ $? -eq 0 ]; then
+    sed -i '/jd_crazy_joy_coin/d' ${ShellDir}/run_all.sh
+    echo "bash ${ShellDir}/jd.sh jd_crazy_joy_coin now" >>${ShellDir}/run_all.sh
   fi
+
+  ## 去除不想加入到此脚本中的活动
+  ## 例：sed -i '/xxx/d' ${ShellDir}/run_all.sh
+  sed -i '/jd_delCoupon/d' ${ShellDir}/run_all.sh ## 不执行 "京东家庭号" 活动
+  sed -i '/jd_family/d' ${ShellDir}/run_all.sh    ## 不执行 "删除优惠券" 活动
+
+  ## 去除脚本中的空行
+  sed -i '/^\s*$/d' ${ShellDir}/run_all.sh
+  ## 赋权
+  chmod 777 ${ShellDir}/run_all.sh
 }
 
+function panelinit {
+  [ -f ${PanelDir}/package.json ] && PackageListOld=$(cat ${PanelDir}/package.json)
+  cd ${PanelDir}
+  if [[ "${PackageListOld}" != "$(cat package.json)" ]]; then
+    echo -e "检测到package.json有变化，运行 npm install...\n"
+    Npm_InstallSub
+    if [ $? -ne 0 ]; then
+      echo -e "\nnpm install 运行不成功，自动删除 ${ScriptsDir}/node_modules 后再次尝试一遍..."
+      rm -rf ${PanelDir}/node_modules
+    fi
+    echo
+  fi
+
+  if [ ! -d ${PanelDir}/node_modules ]; then
+    echo -e "运行 npm install...\n"
+    Npm_InstallSub
+    if [ $? -ne 0 ]; then
+      echo -e "\nnpm install 运行不成功，自动删除 ${ScriptsDir}/node_modules...\n"
+      echo -e "请进入 ${ScriptsDir} 目录后按照wiki教程手动运行 npm install...\n"
+      echo -e "当 npm install 失败时，如果检测到有新任务或失效任务，只会输出日志，不会自动增加或删除定时任务...\n"
+      echo -e "3...\n"
+      sleep 1
+      echo -e "2...\n"
+      sleep 1
+      echo -e "1...\n"
+      sleep 1
+      rm -rf ${PanelDir}/node_modules
+    fi
+  fi
+  echo -e "控制面板检查&更新完成"
+  sleep 1
+  if [ ! -s ${panelpwd} ]; then
+    cp -f ${panelpwdSample} ${panelpwd}
+    echo -e "检测到未设置密码，用户名：admin，密码：adminadmin\n"
+  fi
+}
 
 ## 在日志中记录时间与路径
-echo -e "\n##############################################################\n"
-echo -n "系统时间："
-echo -e "$(date "+%Y-%m-%d %H:%M:%S")"
-if [ "${TZ}" = "UTC" ]; then
-  echo -n "北京时间："
-  echo -e "$(date -d "8 hour" "+%Y-%m-%d %H:%M:%S")"
+echo -e ''
+echo -e "+----------------- 开 始 执 行 更 新 脚 本 -----------------+"
+echo -e ''
+echo -e "   活动脚本目录：${ScriptsDir}"
+echo -e ''
+echo -e "   当前系统时间：$(date "+%Y-%m-%d %H:%M")"
+echo -e ''
+echo -e "+-----------------------------------------------------------+"
+## 检测配置文件链接
+SourceUrl_Update
+## 更新shell脚本、检测配置文件版本并将sample/config.sh.sample复制到config目录下
+Git_PullShell && Update_Cron
+VerConfSample=$(grep " Version: " ${FileConfSample} | perl -pe "s|.+v((\d+\.?){3})|\1|")
+[ -f ${FileConf} ] && VerConf=$(grep " Version: " ${FileConf} | perl -pe "s|.+v((\d+\.?){3})|\1|")
+if [ ${ExitStatusShell} -eq 0 ]
+then
+  echo -e "\nshell脚本更新完成...\n"
+  if [ -n "${JD_DIR}" ] && [ -d ${ConfigDir} ]; then
+    cp -f ${FileConfSample} ${ConfigDir}/config.sh.sample
+  fi
+else
+  echo -e "\nshell脚本更新失败，请检查原因后再次运行git_pull.sh，或等待定时任务自动再次运行git_pull.sh...\n"
 fi
-echo -e "\n--------------------------------------------------------------\n"
 
-## 导入配置，设置远程仓库地址，更新 jd-base 脚本，发送新配置通知
-Import_Conf "git_pull"
-[ -f ${ShellDir}/panel/package.json ] && PanelDependOld=$(cat ${ShellDir}/panel/package.json)
-Git_PullShell
-[ -f ${ShellDir}/panel/package.json ] && PanelDependNew=$(cat ${ShellDir}/panel/package.json)
-Git_PullShellNext
-
-echo -e "\n--------------------------------------------------------------\n"
-## 克隆或更新 jd_scripts 脚本
-[ -f ${ScriptsDir}/package.json ] && ScriptsDependOld=$(cat ${ScriptsDir}/package.json)
-[ -d ${ScriptsDir}/.git ] && Git_PullScripts || Git_CloneScripts
-[ -f ${ScriptsDir}/package.json ] && ScriptsDependNew=$(cat ${ScriptsDir}/package.json)
+## 克隆或更新js脚本
+if [ ${ExitStatusShell} -eq 0 ]; then
+  echo -e "--------------------------------------------------------------\n"
+  [ -f ${ScriptsDir}/package.json ] && PackageListOld=$(cat ${ScriptsDir}/package.json)
+  [ -d ${ScriptsDir}/.git ] && Git_PullScripts || Git_CloneScripts
+  #测试自写脚本
+  [ -d ${Scripts2Dir}/.git ] && Git_PullScripts2 || Git_CloneScripts2
+  cp -f ${Scripts2Dir}/jd_*.js ${ScriptsDir}
+fi
 
 ## 执行各函数
-if [[ ${ExitStatusScripts} -eq 0 ]]
-then
-  echo -e "更新 jd_scripts 脚本成功\n"
+if [[ ${ExitStatusScripts} -eq 0 ]]; then
+  Change_ALL
+  [ -d ${ScriptsDir}/node_modules ] && Notify_Version
   Diff_Cron
-  [[ "${ScriptsDependOld}" != "${ScriptsDependNew}" ]] && cd ${ScriptsDir} && Npm_Install scripts
+  Npm_Install
   Output_ListJsAdd
   Output_ListJsDrop
   Del_Cron
   Add_Cron
-  ReplaceJs
-  Set_DiyEnv
+  ExtraShell
+  Run_All
+  panelinit
+  echo -e "活动脚本更新完成......\n"
 else
-  echo -e "更新 jd_scripts 脚本失败，请检查原因\n"
+  echo -e "\033[31m活动脚本更新失败，请检查原因或再次运行 git_pull.sh ......\033[0m"
+  Change_ALL
 fi
 
-## 给所有 shell 脚本赋予 755 权限
-Chmod_ShellScripts
+## 清除配置缓存
+[ -f ${FileConftemp} ] && rm -rf ${FileConftemp}
+
+echo -e "脚本目录：${ShellDir}"
