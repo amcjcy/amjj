@@ -6,7 +6,7 @@ ShellDir=${JD_DIR:-$(cd $(dirname $0); pwd)}
 LogDir=${ShellDir}/log
 [ ! -d ${LogDir} ] && mkdir -p ${LogDir}
 ScriptsDir=${ShellDir}/scripts
-Scripts2Dir=${ShellDir}/scripts2
+Scripts2Dir=${ShellDir}/scripts
 ConfigDir=${ShellDir}/config
 FileConf=${ConfigDir}/config.sh
 FileConftemp=${ConfigDir}/config.sh.temp
