@@ -57,7 +57,7 @@ function Git_PullShellNext {
 ## 克隆 jd_scripts 脚本
 function Git_CloneScripts {
   echo -e "克隆 jd_scripts 脚本\n"
-  git clone -b master ${ScriptsURL} ${ScriptsDir}
+  git clone -b main ${ScriptsURL} ${ScriptsDir}
   ExitStatusScripts=$?
   echo
 }
@@ -69,7 +69,7 @@ function Git_PullScripts {
   cd ${ScriptsDir}
   git fetch --all
   ExitStatusScripts=$?
-  git reset --hard origin/master
+  git reset --hard origin/main
   echo
 }
 
