@@ -78,6 +78,7 @@ function Combin_All {
   export JDCFD_SHARECODES=$(Combin_Sub ForOtherCfd)
   export JDHEALTH_SHARECODES=$(Combin_Sub ForOtherHealth)
   export CITY_SHARECODES=$(Combin_Sub ForOtherCity)
+  export JD818_SHARECODES=$(Combin_Sub ForOtherCarnivalcity)
 }
 
 
