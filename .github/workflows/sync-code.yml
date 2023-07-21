@@ -32,13 +32,13 @@ jobs:
           rm -rf temp-repo/*
 
           # Copy the code from the source repo to the destination repo
-          cp -R source-repo/* temp-repo/
+          cp -R $GITHUB_WORKSPACE/* temp-repo/
 
           # Commit the changes to the destination repo
           cd temp-repo
           git add .
           git commit -m "Copy code from source repo"
-          git push origin code
+          git push origin main
 
       - name: Clean up
         run: rm -rf temp-repo
