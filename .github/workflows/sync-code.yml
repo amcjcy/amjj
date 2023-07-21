@@ -1,26 +1,44 @@
-# File: .github/workflows/repo-sync.yml
-name: sync-code
+name: Copy Repo Code
+
 on:
-#  schedule:
-#  - cron:  "*/15 * * * *"
   workflow_dispatch:
-  watch:
-    types: started
   push:
-    branches: [main]
+    branches:
+      - main
 
 jobs:
-  repo-sync:
+  copy-code:
     runs-on: ubuntu-latest
-    if: github.event.repository.owner.id == github.event.sender.id
+
     steps:
-    - uses: actions/checkout@v2
-      with:
-        persist-credentials: false
-    - name: repo-sync
-      uses: repo-sync/github-sync@v2
-      with:
-        source_repo: "https://github.com/NimaQu/shadowsocks.git"
-        source_branch: "manyuser"
-        destination_branch: "code"
-        github_token: ${{ secrets.PAT }}
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '16'
+
+      - name: Checkout source repo
+        uses: actions/checkout@v2
+
+      - name: Copy code to destination repo
+        run: |
+          # Set up git config for destination repo
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+
+          # Create a clone of the destination repo
+          git clone -b manyuser https://github.com/NimaQu/shadowsocks.git temp-repo
+
+          # Clear the code in the destination repo
+          rm -rf temp-repo/*
+
+          # Copy the code from the source repo to the destination repo
+          cp -R source-repo/* temp-repo/
+
+          # Commit the changes to the destination repo
+          cd temp-repo
+          git add .
+          git commit -m "Copy code from source repo"
+          git push origin code
+
+      - name: Clean up
+        run: rm -rf temp-repo
